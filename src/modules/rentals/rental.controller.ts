@@ -86,6 +86,20 @@ export class RentalController {
       data: null,
     });
   };
+
+  updateStatus = async (
+    req: Request,
+    res: Response<ApiSuccess<Rental>>,
+  ): Promise<void> => {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+    const rental = await this.service.updateRentalStatus(id, status);
+    res.status(200).json({
+      success: true,
+      message: 'Rental status updated successfully',
+      data: rental,
+    });
+  };
 }
 
 export const rentalController = new RentalController();

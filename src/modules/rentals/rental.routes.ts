@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { rentalController } from './rental.controller.js';
-import { createRentalSchema, updateRentalSchema, rentalQuerySchema } from './rental.validator.js';
+import { createRentalSchema, updateRentalSchema, rentalQuerySchema, updateStatusSchema } from './rental.validator.js';
 import { validate } from '../../common/middlewares/validate.middleware.js';
 import { verifyJwt } from '../auth/auth.middleware.js';
 import { asyncHandler } from '../../common/utils/asyncHandler.js';
@@ -14,6 +14,7 @@ router.get('/', validate(rentalQuerySchema, 'query'), asyncHandler(rentalControl
 router.get('/:id', asyncHandler(rentalController.getById));
 router.post('/', validate(createRentalSchema, 'body'), asyncHandler(rentalController.create));
 router.put('/:id', validate(updateRentalSchema, 'body'), asyncHandler(rentalController.update));
+router.patch('/:id/status', validate(updateStatusSchema, 'body'), asyncHandler(rentalController.updateStatus));
 router.delete('/:id', asyncHandler(rentalController.delete));
 
 export default router;

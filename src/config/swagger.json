@@ -1,0 +1,269 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Vehicle Rental Management API",
+    "version": "1.0.0",
+    "description": "Production-ready RESTful API for Vehicle Rental Management built with Express, TypeScript, Knex, and PostgreSQL."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Check if API is up and running.",
+        "responses": {
+          "200": { "description": "API status OK" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Staff Login",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "admin@rental.com" },
+                  "password": { "type": "string", "example": "Password123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful & JWT issued" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Get Logged-in Staff Profile",
+        "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Staff profile details" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "summary": "Change Staff Password",
+        "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["current_password", "new_password"],
+                "properties": {
+                  "current_password": { "type": "string", "example": "Password123!" },
+                  "new_password": { "type": "string", "example": "NewPassword123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password changed successfully" }
+        }
+      }
+    },
+    "/api/v1/vehicles": {
+      "get": {
+        "summary": "List Paginated Vehicles",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "List of vehicles" } }
+      },
+      "post": {
+        "summary": "Create Vehicle",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "plate_number", "category", "daily_rate"],
+                "properties": {
+                  "name": { "type": "string", "example": "Toyota Camry" },
+                  "plate_number": { "type": "string", "example": "DHAKA-METRO-GA-11-2233" },
+                  "category": { "type": "string", "example": "Sedan" },
+                  "daily_rate": { "type": "number", "example": 100.0 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Vehicle created" } }
+      }
+    },
+    "/api/v1/vehicles/stats/summary": {
+      "get": {
+        "summary": "Get Vehicle Fleet Statistics",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Fleet stats summary" } }
+      }
+    },
+    "/api/v1/vehicles/{id}": {
+      "get": {
+        "summary": "Get Vehicle Details by ID",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Vehicle details" } }
+      },
+      "put": {
+        "summary": "Update Vehicle",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Vehicle updated" } }
+      },
+      "delete": {
+        "summary": "Soft Delete Vehicle",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Vehicle soft deleted" } }
+      }
+    },
+    "/api/v1/vehicles/{id}/availability": {
+      "get": {
+        "summary": "Check Vehicle Date Availability",
+        "tags": ["Vehicles"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "start_date", "in": "query", "required": true, "schema": { "type": "string", "example": "2026-09-01" } },
+          { "name": "end_date", "in": "query", "required": true, "schema": { "type": "string", "example": "2026-09-05" } }
+        ],
+        "responses": { "200": { "description": "Availability status" } }
+      }
+    },
+    "/api/v1/rentals": {
+      "get": {
+        "summary": "List Paginated Rentals",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "List of rentals" } }
+      },
+      "post": {
+        "summary": "Create Rental Booking",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["vehicle_id", "customer_name", "customer_phone", "start_date", "end_date"],
+                "properties": {
+                  "vehicle_id": { "type": "integer", "example": 1 },
+                  "customer_name": { "type": "string", "example": "Rahim Ahmed" },
+                  "customer_phone": { "type": "string", "example": "+8801711000111" },
+                  "start_date": { "type": "string", "example": "2026-09-01" },
+                  "end_date": { "type": "string", "example": "2026-09-05" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Rental created" },
+          "409": { "description": "Overlapping rental conflict" }
+        }
+      }
+    },
+    "/api/v1/rentals/{id}": {
+      "get": {
+        "summary": "Get Rental Details by ID",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Rental details" } }
+      },
+      "put": {
+        "summary": "Update Rental Details",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Rental updated" } }
+      },
+      "delete": {
+        "summary": "Delete Rental",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Rental deleted" } }
+      }
+    },
+    "/api/v1/rentals/{id}/status": {
+      "patch": {
+        "summary": "Quick Update Rental Status",
+        "tags": ["Rentals"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["booked", "ongoing", "completed", "cancelled"], "example": "completed" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Rental status updated" } }
+      }
+    },
+    "/api/v1/reports/rentals": {
+      "get": {
+        "summary": "Monthly Revenue Report",
+        "tags": ["Reports"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "month", "in": "query", "required": true, "schema": { "type": "string", "example": "2026-08" } },
+          { "name": "vehicle_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Prorated monthly report" } }
+      }
+    }
+  }
+}

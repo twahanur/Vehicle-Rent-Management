@@ -29,3 +29,15 @@ export const vehicleQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(10),
 });
+
+export const availabilityQuerySchema = Joi.object({
+  start_date: Joi.string().isoDate().required().messages({
+    'string.isoDate': 'start_date must be a valid YYYY-MM-DD date',
+    'any.required': 'start_date is required',
+  }),
+  end_date: Joi.string().isoDate().required().messages({
+    'string.isoDate': 'end_date must be a valid YYYY-MM-DD date',
+    'any.required': 'end_date is required',
+  }),
+});
+

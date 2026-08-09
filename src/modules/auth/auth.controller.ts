@@ -17,6 +17,26 @@ export class AuthController {
       data: result,
     });
   };
+
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.id;
+    const profile = await this.service.getProfile(userId);
+    res.status(200).json({
+      success: true,
+      message: 'User profile retrieved successfully',
+      data: profile,
+    });
+  };
+
+  changePassword = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.id;
+    const { current_password, new_password } = req.body;
+    await this.service.changePassword(userId, current_password, new_password);
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  };
 }
 
 export const authController = new AuthController();

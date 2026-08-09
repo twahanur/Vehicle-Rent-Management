@@ -1,10 +1,14 @@
 import { vehicleRepository, VehicleRepository } from './vehicle.repository.js';
+import { rentalRepository, RentalRepository } from '../rentals/rental.repository.js';
 import { Vehicle, CreateVehicleBody, UpdateVehicleBody, VehicleQueryFilter } from './vehicle.types.js';
-import { NotFoundError, ConflictError } from '../../common/errors/index.js';
+import { NotFoundError, ConflictError, ValidationError } from '../../common/errors/index.js';
 import { PaginatedResult } from '../../common/utils/pagination.js';
 
 export class VehicleService {
-  constructor(private repository: VehicleRepository = vehicleRepository) {}
+  constructor(
+    private repository: VehicleRepository = vehicleRepository,
+    private rRepository: RentalRepository = rentalRepository,
+  ) {}
 
   async getAllVehicles(filter: VehicleQueryFilter): Promise<PaginatedResult<Vehicle>> {
     return this.repository.findAll(filter);
@@ -16,6 +20,39 @@ export class VehicleService {
       throw new NotFoundError(`Vehicle with ID ${id} not found`);
     }
     return vehicle;
+  }
+
+  async getFleetSummary() {
+    return this.repository.getFleetSummary();
+  }
+
+  async checkAvailability(id: number, startDateStr: string, endDateStr: string) {
+    const vehicle = await this.repository.findById(id);
+    if (!vehicle) {
+      throw new NotFoundError(`Vehicle with ID ${id} not found`);
+    }
+
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new ValidationError('Invalid start_date or end_date format');
+    }
+    if (start > end) {
+      throw new ValidationError('start_date cannot be after end_date');
+    }
+
+    const overlaps = await this.rRepository.findOverlapping(id, startDateStr, endDateStr);
+    const isAvailable = overlaps.length === 0;
+
+    return {
+      vehicle_id: vehicle.id,
+      vehicle_name: vehicle.name,
+      daily_rate: vehicle.daily_rate,
+      start_date: startDateStr,
+      end_date: endDateStr,
+      is_available: isAvailable,
+      conflicting_rentals_count: overlaps.length,
+    };
   }
 
   async createVehicle(data: CreateVehicleBody, photoPath?: string): Promise<Vehicle> {

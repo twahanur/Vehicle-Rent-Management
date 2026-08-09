@@ -1,4 +1,5 @@
 import { db } from '../../config/knex.js';
+import { acquireLock, releaseLock } from '../../config/redis.js';
 import { rentalRepository, RentalRepository } from './rental.repository.js';
 import { vehicleRepository, VehicleRepository } from '../vehicles/vehicle.repository.js';
 import { Rental, CreateRentalBody, UpdateRentalBody, RentalQueryFilter } from './rental.types.js';
@@ -33,28 +34,42 @@ export class RentalService {
 
     const totalAmount = this.calculateTotalAmount(data.start_date, data.end_date, vehicle.daily_rate);
 
-    return db.transaction(async (trx) => {
-      const conflicts = await this.repository.findOverlapping(
-        data.vehicle_id,
-        data.start_date,
-        data.end_date,
-        undefined,
-        trx,
-      );
+    // 1. Acquire Redis Distributed Lock for the targeted vehicle
+    const lockKey = `lock:vehicle:${data.vehicle_id}`;
+    const lockVal = await acquireLock(lockKey, 5000);
 
-      if (conflicts.length > 0) {
-        throw new ConflictError('Vehicle is already booked for the selected date range');
-      }
+    if (!lockVal) {
+      throw new ConflictError('Vehicle is currently being booked by another process. Please try again.');
+    }
 
-      return this.repository.create(
-        {
-          ...data,
-          total_amount: totalAmount,
-          status: 'booked',
-        },
-        trx,
-      );
-    });
+    try {
+      // 2. Perform DB Transaction with Overlap Check & Execution
+      return await db.transaction(async (trx) => {
+        const conflicts = await this.repository.findOverlapping(
+          data.vehicle_id,
+          data.start_date,
+          data.end_date,
+          undefined,
+          trx,
+        );
+
+        if (conflicts.length > 0) {
+          throw new ConflictError('Vehicle is already booked for the selected date range');
+        }
+
+        return this.repository.create(
+          {
+            ...data,
+            total_amount: totalAmount,
+            status: 'booked',
+          },
+          trx,
+        );
+      });
+    } finally {
+      // 3. Always release Redis Lock
+      await releaseLock(lockKey, lockVal);
+    }
   }
 
   async updateRental(id: number, data: UpdateRentalBody): Promise<Rental> {
@@ -83,35 +98,59 @@ export class RentalService {
 
     const totalAmount = this.calculateTotalAmount(startDate, endDate, vehicle.daily_rate);
 
-    return db.transaction(async (trx) => {
-      if (datesOrVehicleChanged && (status === 'booked' || status === 'ongoing')) {
-        const conflicts = await this.repository.findOverlapping(
-          vehicleId,
-          startDate,
-          endDate,
+    const lockKey = `lock:vehicle:${vehicleId}`;
+    const lockVal = await acquireLock(lockKey, 5000);
+
+    if (!lockVal) {
+      throw new ConflictError('Vehicle is currently being updated by another process. Please try again.');
+    }
+
+    try {
+      return await db.transaction(async (trx) => {
+        if (datesOrVehicleChanged && (status === 'booked' || status === 'ongoing')) {
+          const conflicts = await this.repository.findOverlapping(
+            vehicleId,
+            startDate,
+            endDate,
+            id,
+            trx,
+          );
+
+          if (conflicts.length > 0) {
+            throw new ConflictError('Vehicle is already booked for the selected date range');
+          }
+        }
+
+        const updated = await this.repository.update(
           id,
+          {
+            ...data,
+            total_amount: totalAmount,
+          },
           trx,
         );
 
-        if (conflicts.length > 0) {
-          throw new ConflictError('Vehicle is already booked for the selected date range');
+        if (!updated) {
+          throw new NotFoundError(`Rental with ID ${id} not found`);
         }
-      }
+        return updated;
+      });
+    } finally {
+      await releaseLock(lockKey, lockVal);
+    }
+  }
 
-      const updated = await this.repository.update(
-        id,
-        {
-          ...data,
-          total_amount: totalAmount,
-        },
-        trx,
-      );
+  async updateRentalStatus(id: number, status: string): Promise<Rental> {
+    const currentRental = await this.repository.findById(id);
+    if (!currentRental) {
+      throw new NotFoundError(`Rental with ID ${id} not found`);
+    }
 
-      if (!updated) {
-        throw new NotFoundError(`Rental with ID ${id} not found`);
-      }
-      return updated;
-    });
+    const updated = await this.repository.update(id, { status: status as any });
+    if (!updated) {
+      throw new NotFoundError(`Rental with ID ${id} not found`);
+    }
+    return updated;
   }
 
   async deleteRental(id: number): Promise<void> {

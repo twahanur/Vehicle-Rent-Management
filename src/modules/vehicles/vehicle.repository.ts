@@ -105,6 +105,20 @@ export class VehicleRepository {
 
     return updatedCount > 0;
   }
+
+  async getFleetSummary(): Promise<{ total_vehicles: number; active_vehicles: number; deleted_vehicles: number }> {
+    const totalResult = await db(TABLES.VEHICLES).count<{ count: string }>('id as count').first();
+    const activeResult = await db(TABLES.VEHICLES).whereNull('deleted_at').count<{ count: string }>('id as count').first();
+    
+    const total = Number(totalResult?.count || 0);
+    const active = Number(activeResult?.count || 0);
+    
+    return {
+      total_vehicles: total,
+      active_vehicles: active,
+      deleted_vehicles: total - active,
+    };
+  }
 }
 
 export const vehicleRepository = new VehicleRepository();

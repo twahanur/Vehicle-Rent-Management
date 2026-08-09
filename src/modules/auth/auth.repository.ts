@@ -9,6 +9,16 @@ export class AuthRepository {
   async findById(id: number): Promise<StaffTable | undefined> {
     return db(TABLES.STAFF).where({ id }).first();
   }
+
+  async updatePassword(id: number, passwordHash: string): Promise<boolean> {
+    const updatedCount = await db(TABLES.STAFF)
+      .where({ id })
+      .update({
+        password_hash: passwordHash,
+        updated_at: db.fn.now(),
+      });
+    return updatedCount > 0;
+  }
 }
 
 export const authRepository = new AuthRepository();

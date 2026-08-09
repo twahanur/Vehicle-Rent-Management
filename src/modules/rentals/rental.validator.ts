@@ -39,3 +39,11 @@ export const rentalQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(10),
 });
+
+export const updateStatusSchema = Joi.object({
+  status: Joi.string().valid('booked', 'ongoing', 'completed', 'cancelled').required().messages({
+    'any.only': 'status must be one of: booked, ongoing, completed, cancelled',
+    'any.required': 'status is required',
+  }),
+});
+

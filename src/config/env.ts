@@ -15,6 +15,7 @@ const envSchema = Joi.object({
   MAX_UPLOAD_SIZE_MB: Joi.number().default(5),
   RATE_LIMIT_WINDOW_MIN: Joi.number().default(15),
   RATE_LIMIT_MAX: Joi.number().default(5),
+  REDIS_URL: Joi.string().default('redis://127.0.0.1:6379'),
 }).unknown();
 
 const { value: envVars, error } = envSchema.validate(process.env);
@@ -35,4 +36,5 @@ export const env = {
   maxUploadSizeMb: envVars.MAX_UPLOAD_SIZE_MB as number,
   rateLimitWindowMin: envVars.RATE_LIMIT_WINDOW_MIN as number,
   rateLimitMax: envVars.RATE_LIMIT_MAX as number,
+  redisUrl: envVars.REDIS_URL as string,
 };

@@ -85,6 +85,25 @@ export class VehicleController {
       data: null,
     });
   };
+
+  getStats = async (req: Request, res: Response): Promise<void> => {
+    const summary = await this.service.getFleetSummary();
+    res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  };
+
+  checkAvailability = async (req: Request, res: Response): Promise<void> => {
+    const id = Number(req.params.id);
+    const startDate = req.query.start_date as string;
+    const endDate = req.query.end_date as string;
+    const result = await this.service.checkAvailability(id, startDate, endDate);
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  };
 }
 
 export const vehicleController = new VehicleController();
