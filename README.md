@@ -1,146 +1,287 @@
-# 🚗 Vehicle Rental Management Backend API
+# Vehicle Rental Management Backend API
 
-A RESTful API backend built with **Node.js**, **Express**, **TypeScript**, **Knex.js**, and **PostgreSQL** for managing vehicle fleets, customer rental bookings, and monthly financial reports.
-
----
-
-## 📖 1. Project Overview (প্রজেক্ট ওভারভিউ)
-
-এটি একটি কার রেন্টাল কোম্পানির ব্যাকএন্ড সিস্টেম। এই ব্যাকএন্ডের প্রধান কাজগুলো হলো:
-
-1. **Staff Authentication**: স্টাফ লগইন (JWT টোকেন দিয়ে) ও সিকিউরিটি।
-2. **Vehicle Fleet Management**: গাড়ির তথ্য যোগ করা, আপডেট করা, ছবি আপলোড (Multer), তালিকা দেখা এবং সফট-ডিলিট (Soft Delete) করা।
-3. **Rental Booking System**: গ্রাহকের বুকিং নেওয়া এবং সার্ভার-সাইডে ভাড়া হিসাব করা ($Daily\_Rate \times Days$).
-4. **Double Booking Prevention**: একই গাড়ি একই তারিখে যেন দু'বার বুক না হতে পারে, সেজন্য অ্যাপ লেভেলে ওভারল্যাপ চেকিং, ডাটাবেজ ট্রানজেকশন লকিং (`FOR UPDATE`) এবং Redis Distributed Locking ব্যবহার করা হয়েছে।
-5. **Monthly Revenue Report**: কোনো নির্দিষ্ট মাসের (যেমন `2026-08`) গাড়ির পারফরম্যান্স ও আয়ের রিপোর্ট। একাধিক মাসজুড়ে থাকা বুকিংয়ের ক্ষেত্রে শুধু উক্ত মাসের দিন ও আয় হিসাব করা হয়।
+A production-ready RESTful API backend built with **Node.js**, **Express**, **TypeScript**, **Knex.js**, and **PostgreSQL** for managing vehicle fleets, customer rental bookings, and monthly financial reports.
 
 ---
 
-## 🗄 2. Database Migrations & Seeds (মাইগ্রেশন ও সিড ফাইল কী এবং কেন?)
+## 1. Project Overview
 
-### ❓ মাইগ্রেশন (Migration) ফাইল কী?
-ডাটাবেজ মাইগ্রেশন ফাইল হলো এমন কিছু কোড ফাইল (Script), যা খালি ডাটাবেজে (Empty Database) টেবিলগুলো নিজে নিজে সঠিক নিয়ম অনুযায়ী তৈরি করে। 
+The Vehicle Rental Management System is a backend solution designed for vehicle rental businesses. It provides staff members with endpoints to manage fleet inventories, record customer rental bookings, prevent overlapping reservation conflicts, and generate monthly financial performance reports per vehicle.
 
-### ❓ কেন মাইগ্রেশন প্রয়োজন এবং README-তে কেন লেখা হয়েছে?
-- **রিকোয়ারমেন্ট অনুযায়ী**: প্রজেক্টের রিকোয়ারমেন্টে বলা হয়েছে *"Schema should build cleanly on an empty database using migrations"*.
-- **স্বয়ংক্রিয় টেবিল তৈরি**: ম্যানুয়ালি SQL কোড বা PgAdmin এ টেবিল না বানিয়ে একটিমাত্র কমান্ড (`npm run migrate:latest`) দিলে প্রজেক্টের সব টেবিল সঠিক সম্পর্কের (Foreign Key, Unique Key, Indexes) সাথে তৈরি হয়ে যাবে।
-
-### 📋 মাইগ্রেশন ফাইলসমূহ (`src/db/migrations/`):
-1. **`20260801_000001_create_staff.ts`**: `staff` টেবিল তৈরি করে (id, email, password_hash, name, timestamps)।
-2. **`20260801_000002_create_vehicles.ts`**: `vehicles` টেবিল তৈরি করে (id, name, plate_number, category, daily_rate, photo_path, deleted_at, timestamps)।
-3. **`20260801_000003_create_rentals.ts`**: `rentals` টেবিল তৈরি করে (id, vehicle_id FK, customer_name, customer_phone, start_date, end_date, total_amount, status, timestamps)।
-
-### 🌾 সিড (Seed) ফাইল কী?
-সিড ফাইল হলো ডামি টেস্ট ডাটা যা ডাটাবেজে শুরুতে প্রবেশ করানো হয়।
-- **`src/db/seeds/001_staff.ts`**: টেস্ট করার জন্য ডিফল্ট অ্যাডমিন স্টাফ তৈরি করে (`admin@rental.com` / `Password123!`).
-- **`src/db/seeds/002_vehicles.ts`**: নমুনা গাড়ির ডাটা তৈরি করে।
-- **`src/db/seeds/003_rentals.ts`**: রেন্টাল ডাটা তৈরি করে, যার মধ্যে একটি বুকিং `2026-07-29` থেকে `2026-08-03` পর্যন্ত রাখা হয়েছে যাতে মাসের সীমানা অতিক্রম করার হিসাব টেস্ট করা যায়।
+### Core Functional Capabilities
+1. **Staff Authentication**: JWT-based authentication for staff members with bcrypt password hashing and rate-limited login endpoints.
+2. **Vehicle Fleet Management**: Full CRUD operations for vehicles with soft-delete functionality (`deleted_at`), category filtering, name/plate search, and image file upload processing via Multer.
+3. **Rental Booking Engine**: Booking creation and management with server-side automated pricing ($Daily\_Rate \times Days$).
+4. **Overlap Prevention**: Application-level overlap validation combined with PostgreSQL transaction row locking (`FOR UPDATE`) and Redis Distributed Locking to guarantee zero double-booking under concurrent traffic.
+5. **Prorated Monthly Financial Reports**: SQL Common Table Expressions (CTE) using `GREATEST` and `LEAST` functions to clip date ranges spanning across calendar month boundaries (e.g. July 29 – August 3) and calculate exact prorated daily revenue for any requested month (`YYYY-MM`).
 
 ---
 
-## 🚀 3. Quick Setup & Run Instructions (প্রজেক্ট চালানোর নিয়ম)
+## 2. Technology Stack
 
-### Step 1: Clone & Install Dependencies
+- **Runtime Environment**: Node.js (v18+)
+- **Programming Language**: TypeScript (v5.7)
+- **Web Framework**: Express.js (v4.21)
+- **Query Builder**: Knex.js (v3.1)
+- **Database Engine**: PostgreSQL (v14+)
+- **Caching & Distributed Locks**: Redis / ioredis
+- **Authentication**: JSON Web Tokens (jsonwebtoken), bcrypt
+- **File Upload Storage**: Multer (Local static file storage)
+- **Validation**: Joi (v17)
+- **Code Quality**: ESLint, Prettier
+
+---
+
+## 3. Architecture & Design Principles
+
+The application is structured following Object-Oriented Programming (OOP) and Clean Layered Architecture patterns:
+
+```
+[ Client Request ]
+        │
+        ▼
+  [ Controller ]   <-- Handles Request parsing & HTTP responses
+        │
+        ▼
+   [ Service ]     <-- Implements Business Logic, Pricing & Lock Guard
+        │
+        ▼
+  [ Repository ]  <-- Executes Knex query builder & PostgreSQL Raw SQL
+        │
+        ▼
+[ PostgreSQL / Redis ]
+```
+
+- **Modular Separation**: Decoupled domain modules (`auth`, `vehicles`, `rentals`, `reports`) containing isolated routes, controllers, services, repositories, validators, and types.
+- **Concurrency Safety**: Two-tier locking strategy using Redis key locks (`acquireLock`) alongside database transactional row locks (`FOR UPDATE`).
+- **Type Definitions**: Static typing across all request payloads, query parameters, responses, and Express Request context extensions (`req.user`).
+
+---
+
+## 4. Database Schema & ERD
+
+```
++--------------------------------+       +------------------------------------+
+|             staff              |       |              vehicles              |
++--------------------------------+       +------------------------------------+
+| id (PK, serial)                |       | id (PK, serial)                    |
+| email (unique, string)         |       | name (string)                      |
+| password_hash (string)         |       | plate_number (unique, string)      |
+| name (string)                  |       | category (string)                  |
+| created_at (timestamp)         |       | daily_rate (decimal 10,2)          |
+| updated_at (timestamp)         |       | photo_path (nullable string)       |
++--------------------------------+       | deleted_at (nullable timestamp)    |
+                                         | created_at (timestamp)             |
+                                         | updated_at (timestamp)             |
+                                         +------------------------------------+
+                                                           ^
+                                                           | 1:N
+                                         +-----------------+------------------+
+                                         |              rentals               |
+                                         +------------------------------------+
+                                         | id (PK, serial)                    |
+                                         | vehicle_id (FK -> vehicles.id)     |
+                                         | customer_name (string)             |
+                                         | customer_phone (string)            |
+                                         | start_date (date)                  |
+                                         | end_date (date)                    |
+                                         | total_amount (decimal 10,2)        |
+                                         | status (booked/ongoing/completed/  |
+                                         |         cancelled)                 |
+                                         | created_at (timestamp)             |
+                                         | updated_at (timestamp)             |
+                                         +------------------------------------+
+```
+
+---
+
+## 5. Database Migrations & Seeds
+
+### Purpose of Migration Files
+Migration files serve as version-controlled database schema definitions written in TypeScript. Executing migrations builds all tables, foreign keys, unique constraints, and indexes on an empty database without requiring manual SQL creation.
+
+### Migration Files (`src/db/migrations/`)
+1. `20260801_000001_create_staff.ts`: Defines the `staff` user table.
+2. `20260801_000002_create_vehicles.ts`: Defines the `vehicles` table with partial index on `deleted_at`.
+3. `20260801_000003_create_rentals.ts`: Defines the `rentals` table with foreign keys and index constraints.
+
+### Seed Files (`src/db/seeds/`)
+- `001_staff.ts`: Seeds default administrator staff credentials.
+- `002_vehicles.ts`: Seeds sample vehicle fleet data across categories.
+- `003_rentals.ts`: Seeds sample rental bookings, including a boundary-spanning booking (`2026-07-29` to `2026-08-03`) to enable report testing.
+
+---
+
+## 6. Installation & Setup Instructions
+
+### Prerequisites
+- Node.js (v18.x or higher)
+- PostgreSQL (v14.x or higher)
+- Redis Server (Optional, connects via `REDIS_URL`)
+
+### Step 1: Clone Repository & Install Dependencies
 ```bash
+git clone https://github.com/twahanur/Vehicle-Rent-Management.git
+cd Vehicle-Rent-Management
 npm install
 ```
 
-### Step 2: Configure Environment Variables (`.env`)
-`.env.example` ফাইল কপি করে `.env` ফাইল তৈরি করুন:
+### Step 2: Configure Environment Variables
+Copy `.env.example` to create a `.env` file:
 ```bash
 cp .env.example .env
 ```
 
-`.env` ফাইলে আপনার ডাটাবেজ লিংক দিন:
+Configure parameters in `.env`:
 ```env
 PORT=4000
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vehicle_rental
-JWT_SECRET=your_jwt_secret_key
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+JWT_SECRET=super_secret_jwt_key
+JWT_EXPIRES_IN=8h
 UPLOAD_DIR=uploads
+MAX_UPLOAD_SIZE_MB=5
+RATE_LIMIT_WINDOW_MIN=15
+RATE_LIMIT_MAX=5
+REDIS_URL=redis://localhost:6379
 ```
 
 ### Step 3: Run Database Migrations & Seeds
-ডাটাবেজে টেবিল তৈরি করা এবং প্রাথমিক ডাটা ঢোকানোর জন্য এই কমান্ড দুটি চালান:
 ```bash
-# ১. ডাটাবেজ টেবিল তৈরি করতে
+# Execute schema migrations
 npm run migrate:latest
 
-# ২. টেস্ট ডাটা ডাটাবেজে ইনসার্ট করতে
+# Populate database with seed data
 npm run seed:run
 ```
 
-### Step 4: Start the Application
+### Step 4: Run Application
 ```bash
-# ডেভেলপমেন্ট মোডে চালাতে (Hot Reload)
+# Start development server with hot-reload
 npm run dev
 
-# প্রোডাকশন বিল্ড ও রান করতে
+# Build TypeScript to JavaScript
 npm run build
+
+# Start production server
 npm start
 ```
 
----
-
-## 🔑 Default Login Credentials
+### Default Credentials
 - **Email**: `admin@rental.com`
 - **Password**: `Password123!`
 
 ---
 
-## 📡 4. API Endpoints Overview (এন্ডপয়েন্ট তালিকা)
+## 7. API Reference
 
-| Method | Endpoint | Access | Description (বিবরণ) |
+### Authentication Endpoints
+| Method | Endpoint | Protection | Description |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/login` | Public | স্টাফ লগইন ও JWT টোকেন গ্রহণ |
-| `GET` | `/api/v1/vehicles` | Staff | গাড়ির তালিকা (পেজিনেশন, ক্যাটাগরি ফিল্টার, নেম সার্চ) |
-| `GET` | `/api/v1/vehicles/:id` | Staff | নির্দিষ্ট গাড়ির বিস্তারিত তথ্য |
-| `POST` | `/api/v1/vehicles` | Staff | নতুন গাড়ি যোগ করা (ছবি আপলোড সহ) |
-| `PUT` | `/api/v1/vehicles/:id` | Staff | গাড়ির তথ্য ও ছবি আপডেট করা |
-| `DELETE` | `/api/v1/vehicles/:id` | Staff | গাড়ি 소프트 ডিলিট (Soft Delete) |
-| `GET` | `/api/v1/rentals` | Staff | রেন্টাল বুকিং তালিকা (ফিল্টার সহ) |
-| `GET` | `/api/v1/rentals/:id` | Staff | নির্দিষ্ট রেন্টাল বুকিং তথ্য |
-| `POST` | `/api/v1/rentals` | Staff | নতুন রেন্টাল বুকিং (ওভারল্যাপ চেক ও টাকা হিসাব) |
-| `PUT` | `/api/v1/rentals/:id` | Staff | রেন্টাল বুকিং আপডেট (পুনরায় ওভারল্যাপ চেক) |
-| `DELETE` | `/api/v1/rentals/:id` | Staff | রেন্টাল ডাটা ডিলিট |
-| `GET` | `/api/v1/reports/rentals` | Staff | মাসিক ইনকাম ও বুকিং রিপোর্ট (`?month=YYYY-MM`) |
+| `POST` | `/api/v1/auth/login` | Public (Rate Limited) | Authenticate staff member and receive JWT token |
+| `GET` | `/api/v1/auth/me` | JWT | Get current authenticated staff profile |
+| `POST` | `/api/v1/auth/change-password` | JWT | Change staff account password |
+
+### Vehicle Management Endpoints
+| Method | Endpoint | Protection | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/vehicles` | JWT | List vehicles with pagination (`?page=`, `?limit=`), `?category=`, and `?search=` |
+| `GET` | `/api/v1/vehicles/:id` | JWT | Retrieve vehicle by ID |
+| `POST` | `/api/v1/vehicles` | JWT | Create vehicle (`multipart/form-data` with `photo` upload) |
+| `PUT` | `/api/v1/vehicles/:id` | JWT | Update vehicle details (supports optional photo replacement) |
+| `DELETE` | `/api/v1/vehicles/:id` | JWT | Soft-delete vehicle (`deleted_at` timestamp) |
+| `GET` | `/api/v1/vehicles/:id/availability` | JWT | Check vehicle availability for specified date range |
+
+### Rental Endpoints
+| Method | Endpoint | Protection | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/rentals` | JWT | List rentals (`?vehicle_id=`, `?status=`, `?start_date=`, `?end_date=`) |
+| `GET` | `/api/v1/rentals/:id` | JWT | Retrieve rental details by ID |
+| `POST` | `/api/v1/rentals` | JWT | Create rental (validates overlap & calculates total amount) |
+| `PUT` | `/api/v1/rentals/:id` | JWT | Update rental (re-validates overlap on date/vehicle modification) |
+| `PATCH` | `/api/v1/rentals/:id/status` | JWT | Update rental status (`booked`, `ongoing`, `completed`, `cancelled`) |
+| `DELETE` | `/api/v1/rentals/:id` | JWT | Delete rental record |
+
+### Financial Report Endpoints
+| Method | Endpoint | Protection | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/reports/rentals` | JWT | Retrieve monthly activity and revenue report (`?month=YYYY-MM`, optional `?vehicle_id=`) |
 
 ---
 
-## 🧠 5. Key Logic Explanations (প্রধান দুটি কোয়ারির ব্যাখ্যা)
+## 8. Core Algorithm Explanations
 
-### 1. Overlap Check Logic (ডাবল বুকিং রোধের লজিক)
-দুইটি তারিখের রেঞ্জ $[A_{start}, A_{end}]$ এবং $[B_{start}, B_{end}]$ তখনই ওভারল্যাপ করবে যদি:
-$$start\_date \le B.end\_date \quad \text{AND} \quad end\_date \ge B.start\_date$$
-যদি কোনো গাড়ি ইতোমধ্যে `booked` বা `ongoing` থাকে, তবে নতুন বুকিং বাতিল করে `409 Conflict` রিটার্ন করা হয়।
+### Overlap Check Formula
+Two closed date intervals $[A_{start}, A_{end}]$ and $[B_{start}, B_{end}]$ overlap if and only if:
+$$\text{start\_date} \le \text{B.end\_date} \quad \text{AND} \quad \text{end\_date} \ge \text{B.start\_date}$$
 
-### 2. Monthly Report Logic (মাসিক রিপোর্ট প্রোরেশন)
-জুলাই ২৯ থেকে আগস্ট ৩ তারিখের বুকিং আগস্ট মাসের রিপোর্টে কীভাবে গণনা করা হয়?
-- `clip_start = GREATEST('2026-07-29', '2026-08-01')` $\rightarrow$ `2026-08-01`
-- `clip_end = LEAST('2026-08-03', '2026-08-31')` $\rightarrow$ `2026-08-03`
-- আগস্ট মাসের মোট দিন = $3 - 1 + 1 = 3\text{ দিন}$।
-- আয় = $Total\_Amount \times \frac{3}{6}$।
+The query filters active reservations (`status IN ('booked', 'ongoing')`) so cancelled or completed rentals do not block availability.
+
+### Monthly Revenue Proration Query
+When generating a report for a target month (e.g. `2026-08`), rentals spanning month boundaries (e.g., `2026-07-29` to `2026-08-03`) are clipped to count only days falling strictly inside the target month:
+
+```sql
+WITH month_bounds AS (
+  SELECT
+    date_trunc('month', :monthDate::date)::date AS month_start,
+    (date_trunc('month', :monthDate::date) + interval '1 month - 1 day')::date AS month_end
+),
+clipped AS (
+  SELECT
+    r.id, r.vehicle_id, r.total_amount, r.start_date, r.end_date,
+    GREATEST(r.start_date, mb.month_start) AS clip_start,
+    LEAST(r.end_date, mb.month_end) AS clip_end
+  FROM rentals r
+  CROSS JOIN month_bounds mb
+  WHERE r.status IN ('booked', 'ongoing', 'completed')
+    AND r.start_date <= mb.month_end
+    AND r.end_date >= mb.month_start
+),
+per_rental AS (
+  SELECT
+    id, vehicle_id,
+    (clip_end - clip_start + 1) AS days_in_month,
+    total_amount * (clip_end - clip_start + 1)::decimal / NULLIF(end_date - start_date + 1, 0) AS revenue_in_month
+  FROM clipped
+)
+SELECT
+  v.id, v.name, v.plate_number, v.category,
+  COUNT(pr.id)::int AS total_bookings,
+  COALESCE(SUM(pr.days_in_month), 0)::int AS days_rented,
+  COALESCE(ROUND(SUM(pr.revenue_in_month), 2), 0)::float AS revenue
+FROM vehicles v
+LEFT JOIN per_rental pr ON pr.vehicle_id = v.id
+WHERE v.deleted_at IS NULL
+GROUP BY v.id, v.name, v.plate_number, v.category
+ORDER BY revenue DESC, days_rented DESC, v.id ASC;
+```
 
 ---
 
-## 🧪 6. Testing & Quality Checks
+## 9. Code Quality & Testing
 
 ```bash
-# TypeScript কম্পাইলেশন চেক
+# Perform TypeScript type-checking
 npx tsc --noEmit
 
-# ESLint কোড কোয়ালিটি চেক
+# Run ESLint checks
 npm run lint
 
-# Concurrency স্ট্রেস টেস্ট (Redis Lock Verification)
+# Format codebase with Prettier
+npm run format
+
+# Run concurrent booking stress test
 npx tsx src/scripts/test_concurrent_rentals.ts
 ```
 
 ---
 
-## 🔗 7. Repository & Contact Details (গিটহাব লিংক ও যোগাযোগ)
+## 10. Repository & Contact Details
 
 - **GitHub Repository**: [https://github.com/twahanur/Vehicle-Rent-Management](https://github.com/twahanur/Vehicle-Rent-Management)
 - **Developer Name**: Twahanur Rahman
+- **Portfolio**: [https://twahanur.dev](https://twahanur.dev)
 - **GitHub Profile**: [https://github.com/twahanur](https://github.com/twahanur)
-- **Email**: [thohanur143@gmail.com](mailto:thohanur143@gmail.com)
-
+- **LinkedIn**: [https://linkedin.com/in/twahanur](https://linkedin.com/in/twahanur)
+- **Email**: [twahanur.rahman@gmail.com](mailto:twahanur.rahman@gmail.com)
