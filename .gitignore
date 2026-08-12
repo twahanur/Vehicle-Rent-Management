@@ -4,3 +4,9 @@ dist/
 uploads/*
 !uploads/.gitkeep
 *.log
+
+# Sensitive or internal requirement/architecture files
+requirement.pdf
+vehicle-rental-backend-architecture.md
+vehicle_rental_management.postman_collection.json
+
