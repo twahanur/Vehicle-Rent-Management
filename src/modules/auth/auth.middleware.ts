@@ -26,7 +26,7 @@ export const verifyJwt = (req: Request, _res: Response, next: NextFunction) => {
       name: decoded.name,
     };
     return next();
-  } catch (_error) {
+  } catch {
     return next(new UnauthorizedError('Invalid or expired token'));
   }
 };

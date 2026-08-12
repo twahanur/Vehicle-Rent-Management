@@ -1,0 +1,891 @@
+{
+	"info": {
+		"_postman_id": "vehicle-rental-management-api-collection",
+		"name": "Vehicle Rental Management API",
+		"description": "Complete Postman Collection for Vehicle Rental Management Backend API including Auth, Vehicle Management, Rental Bookings, and Monthly Revenue Reports.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:4000",
+			"type": "string"
+		},
+		{
+			"key": "bearerToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "vehicleId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "rentalId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "currentMonth",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "startDate",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "endDate",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "randomPlateNumber",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "randomVehicleName",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerName",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerPhone",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{bearerToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "01. Health & Documentation",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Check if backend API server is running and get API metadata."
+					},
+					"response": []
+				},
+				{
+					"name": "Swagger UI Documentation",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api-docs/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api-docs",
+								""
+							]
+						},
+						"description": "Access interactive Swagger API playground."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "02. Authentication",
+			"item": [
+				{
+					"name": "Staff Login (Auto Captures Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.collectionVariables.set(\"bearerToken\", jsonData.data.token);",
+									"        console.log(\"✅ JWT Token captured successfully:\", jsonData.data.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@rental.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates staff member and automatically captures JWT bearer token into {{bearerToken}} collection variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Logged-in Staff Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Returns current logged-in staff profile details."
+					},
+					"response": []
+				},
+				{
+					"name": "Change Staff Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"Password123!\",\n  \"new_password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"change-password"
+							]
+						},
+						"description": "Updates password for currently authenticated staff."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03. Vehicle Management",
+			"item": [
+				{
+					"name": "List Vehicles (Paginated with Filters)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles?page=1&limit=10&category=Sedan&search=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "category",
+									"value": "Sedan"
+								},
+								{
+									"key": "search",
+									"value": ""
+								}
+							]
+						},
+						"description": "Get paginated list of active vehicles with search and category filters."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.length > 0) {",
+									"        pm.collectionVariables.set('vehicleId', jsonData.data[0].id.toString());",
+									"        console.log('✅ Dynamic vehicleId updated from list:', jsonData.data[0].id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Fleet Stats Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles/stats/summary",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles",
+								"stats",
+								"summary"
+							]
+						},
+						"description": "Returns counts for Total, Active, and Soft-Deleted vehicles."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vehicle Details By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles",
+								"{{vehicleId}}"
+							]
+						},
+						"description": "Fetch details of a single vehicle by ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Vehicle Availability for Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}/availability?start_date={{startDate}}&end_date={{endDate}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles",
+								"{{vehicleId}}",
+								"availability"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{startDate}}"
+								},
+								{
+									"key": "end_date",
+									"value": "{{endDate}}"
+								}
+							]
+						},
+						"description": "Check if vehicle is available for rental between specified start and end dates."
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Vehicle (Multipart Form)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "{{randomVehicleName}}",
+									"type": "text"
+								},
+								{
+									"key": "plate_number",
+									"value": "{{randomPlateNumber}}",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "Sedan",
+									"type": "text"
+								},
+								{
+									"key": "daily_rate",
+									"value": "120.00",
+									"type": "text"
+								},
+								{
+									"key": "photo",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles"
+							]
+						},
+						"description": "Add a new vehicle to the fleet with optional photo upload."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.collectionVariables.set('vehicleId', jsonData.data.id.toString());",
+									"        console.log('✅ New vehicleId captured:', jsonData.data.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Vehicle Details",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "{{randomVehicleName}} Updated",
+									"type": "text"
+								},
+								{
+									"key": "plate_number",
+									"value": "{{randomPlateNumber}}",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "Sedan",
+									"type": "text"
+								},
+								{
+									"key": "daily_rate",
+									"value": "130.00",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles",
+								"{{vehicleId}}"
+							]
+						},
+						"description": "Update details of an existing vehicle."
+					},
+					"response": []
+				},
+				{
+					"name": "Soft Delete Vehicle",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"vehicles",
+								"{{vehicleId}}"
+							]
+						},
+						"description": "Soft delete a vehicle (sets deleted_at timestamp)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "04. Rental Bookings",
+			"item": [
+				{
+					"name": "List Rentals (Paginated with Filters)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals?page=1&limit=10&status=booked",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "booked"
+								}
+							]
+						},
+						"description": "List rentals with status, vehicle, or date filters."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.length > 0) {",
+									"        pm.collectionVariables.set('rentalId', jsonData.data[0].id.toString());",
+									"        console.log('✅ Dynamic rentalId updated from list:', jsonData.data[0].id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Rental Details By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals/{{rentalId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals",
+								"{{rentalId}}"
+							]
+						},
+						"description": "Fetch single rental details by ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Rental (Redis Lock + DB Overlap Check)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vehicle_id\": {{vehicleId}},\n  \"customer_name\": \"{{customerName}}\",\n  \"customer_phone\": \"{{customerPhone}}\",\n  \"start_date\": \"{{startDate}}\",\n  \"end_date\": \"{{endDate}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals"
+							]
+						},
+						"description": "Book a vehicle. Protected by Redis Distributed Lock + PostgreSQL Transaction for date overlap & total amount calculation."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.collectionVariables.set('rentalId', jsonData.data.id.toString());",
+									"        console.log('✅ New rentalId captured:', jsonData.data.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Rental Details",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vehicle_id\": {{vehicleId}},\n  \"customer_name\": \"{{customerName}} Updated\",\n  \"customer_phone\": \"{{customerPhone}}\",\n  \"start_date\": \"{{startDate}}\",\n  \"end_date\": \"{{endDate}}\",\n  \"status\": \"booked\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals/{{rentalId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals",
+								"{{rentalId}}"
+							]
+						},
+						"description": "Update rental dates, status, or customer details."
+					},
+					"response": []
+				},
+				{
+					"name": "Quick Update Rental Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals/{{rentalId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals",
+								"{{rentalId}}",
+								"status"
+							]
+						},
+						"description": "Quickly update status ('booked', 'ongoing', 'completed', 'cancelled')."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Rental Record",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rentals/{{rentalId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rentals",
+								"{{rentalId}}"
+							]
+						},
+						"description": "Permanently remove a rental record."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "05. Revenue Reports",
+			"item": [
+				{
+					"name": "Get Monthly Revenue Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/reports/rentals?month={{currentMonth}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"rentals"
+							],
+							"query": [
+								{
+									"key": "month",
+									"value": "{{currentMonth}}"
+								}
+							]
+						},
+						"description": "Get prorated monthly revenue and total days booked for all vehicles."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Monthly Revenue Report (Filtered by Vehicle)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/reports/rentals?month={{currentMonth}}&vehicle_id={{vehicleId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"rentals"
+							],
+							"query": [
+								{
+									"key": "month",
+									"value": "{{currentMonth}}"
+								},
+								{
+									"key": "vehicle_id",
+									"value": "{{vehicleId}}"
+								}
+							]
+						},
+						"description": "Get monthly revenue report for a specific vehicle."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Automatically calculate current month YYYY-MM",
+					"var now = new Date();",
+					"var year = now.getFullYear();",
+					"var month = String(now.getMonth() + 1).padStart(2, '0');",
+					"pm.collectionVariables.set('currentMonth', `${year}-${month}`);",
+					"",
+					"// Automatically generate dynamic non-overlapping future dates",
+					"var today = new Date();",
+					"var randomOffset = Math.floor(Math.random() * 50) + 10;",
+					"var start = new Date(today.getTime() + randomOffset * 86400000);",
+					"var end = new Date(start.getTime() + 4 * 86400000);",
+					"pm.collectionVariables.set('startDate', start.toISOString().split('T')[0]);",
+					"pm.collectionVariables.set('endDate', end.toISOString().split('T')[0]);",
+					"",
+					"// Automatically generate dynamic unique vehicle data",
+					"var randVehicleNum = Math.floor(1000 + Math.random() * 9000);",
+					"pm.collectionVariables.set('randomPlateNumber', `DHAKA-METRO-KA-${randVehicleNum}`);",
+					"pm.collectionVariables.set('randomVehicleName', `Toyota Axio Turbo ${randVehicleNum}`);",
+					"",
+					"// Automatically generate dynamic customer data",
+					"var randCustNum = Math.floor(1000 + Math.random() * 9000);",
+					"pm.collectionVariables.set('customerName', `Customer ${randCustNum}`);",
+					"pm.collectionVariables.set('customerPhone', `+88017${Math.floor(10000000 + Math.random() * 90000000)}`);"
+				]
+			}
+		}
+	]
+}

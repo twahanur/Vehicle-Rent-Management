@@ -5,8 +5,6 @@ import { env } from './env.js';
 
 dotenv.config();
 
-const isProduction = env.env === 'production';
-
 export const knexConfig: { [key: string]: Knex.Config } = {
   development: {
     client: 'pg',

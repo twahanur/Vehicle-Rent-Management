@@ -10,7 +10,7 @@
     "migrate:latest": "knex migrate:latest",
     "migrate:rollback": "knex migrate:rollback",
     "seed:run": "knex seed:run",
-    "lint": "eslint src --ext .ts",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
   "keywords": [],
